@@ -24,10 +24,10 @@ export default defineConfig({
 
   manifestVersion: 3,
   manifest: {
-    name: 'Enhanced Anime1',
+    name: 'Enhanced Anime1 Liam Test',
     description:
-      'Browser extension that adds useful features for anime1.me site.',
-    homepage_url: 'https://github.com/iyume/enhanced-anime1',
+      'Browser extension that adds useful features for anime1.me site. Forked from iyume\'s Enhanced Anime1.',
+    homepage_url: 'https://github.com/liam-ng/enhanced-anime1',
     permissions: ['storage', 'identity'],
     host_permissions: [
       'https://bangumi-token-exchanger.iyumelive.workers.dev/*',
@@ -42,7 +42,10 @@ export default defineConfig({
     ],
     browser_specific_settings: {
       gecko: {
-        id: 'iyumelive@gmail.com', // UUID or email for Firefox
+        id: '@extension-enhanced-anime1-liam-test', // UUID or email for Firefox
+        data_collection_permissions: {
+          required: ['none'],
+        },
       },
     },
   },
