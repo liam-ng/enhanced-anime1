@@ -31,6 +31,8 @@ export default defineConfig({
     permissions: ['storage', 'identity'],
     host_permissions: [
       'https://bangumi-token-exchanger.iyumelive.workers.dev/*',
+      'https://api.bgm.tv/*',
+      'https://unpkg.com/bangumi-data@latest/dist/data.json',
     ],
     web_accessible_resources: [
       {
