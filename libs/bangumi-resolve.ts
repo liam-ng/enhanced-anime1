@@ -1,4 +1,7 @@
-const BANGUMI_DATA_URL = 'https://unpkg.com/bangumi-data@latest/dist/data.json'
+const BANGUMI_DATA_URL = import.meta.env.WXT_BGM_DATA_URL
+if (!BANGUMI_DATA_URL) {
+  throw new Error('Bangumi data URL is not configured')
+}
 
 let cachedBangumiData: BangumiDataJson | null = null
 
@@ -92,7 +95,10 @@ export function findBangumiSubjectId(items: BangumiDataItem[], seriesTitle: stri
   return lastExactMatch ?? lastFuzzyMatch
 }
 
-const BGM_API_BASE = 'https://api.bgm.tv'
+const BGM_API_BASE = import.meta.env.WXT_BGM_API_BASE
+if (!BGM_API_BASE) {
+  throw new Error('Bangumi API base URL is not configured')
+}
 
 export async function fetchBgmSubject(subjectId: string): Promise<BgmSubject> {
   const url = `${BGM_API_BASE}/v0/subjects/${subjectId}`
