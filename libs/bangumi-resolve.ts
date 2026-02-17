@@ -5,14 +5,6 @@ if (!BANGUMI_DATA_URL) {
 
 let cachedBangumiData: BangumiDataJson | null = null
 
-/**
- * Trim anime1 episode title to series title by removing episode number suffix like " [18]".
- * Example: "炎炎消防隊 參之章(第三季) [18]" -> "炎炎消防隊 參之章(第三季)"
- */
-export function trimAnime1SeriesTitle(title: string): string {
-  return title.replace(/\s*\[\d+\]\s*$/, '').trim()
-}
-
 export interface BangumiDataSite {
   site: string
   id: string

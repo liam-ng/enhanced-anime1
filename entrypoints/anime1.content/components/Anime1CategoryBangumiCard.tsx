@@ -1,6 +1,7 @@
 import React, { type FC } from 'react'
 import type { BgmSubject } from '@/libs/bangumi-resolve'
-import { resolveBgmSubjectBySeriesTitle, trimAnime1SeriesTitle } from '@/libs/bangumi-resolve'
+import { resolveBgmSubjectBySeriesTitle } from '@/libs/bangumi-resolve'
+import { useAnime1CategoryQuery } from '@/libs/query'
 import { useAnime1State } from '../providers/anime1-state-provider'
 import { useEffect, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
@@ -119,15 +120,16 @@ const BangumiCardContent: FC<{ subject: BgmSubject }> = ({ subject }) => {
 
 export const Anime1CategoryBangumiCard: FC = () => {
   const { posts } = useAnime1State()
+  const { data: categoryData } = useAnime1CategoryQuery()
   const injectedRef = useRef<{ container: HTMLElement; root: ReturnType<typeof ReactDOM.createRoot> } | null>(null)
 
   useEffect(() => {
-    if (!posts.length) return
+    if (!posts.length || !categoryData) return
 
-    const firstPost = posts[0]
-    const seriesTitle = trimAnime1SeriesTitle(firstPost.title)
+    const category = categoryData[posts[0].categoryId]
+    const seriesTitle = category?.title?.trim()
     if (!seriesTitle) {
-      console.warn('[enhanced-anime1] Bangumi card: empty series title after trim', { rawTitle: firstPost.title })
+      console.warn('[enhanced-anime1] Bangumi card: no category in useAnime1CategoryQuery', { categoryId: category?.id ?? posts[0].categoryId })
       return
     }
 
@@ -167,7 +169,7 @@ export const Anime1CategoryBangumiCard: FC = () => {
         injectedRef.current = null
       }
     }
-  }, [posts])
+  }, [posts, categoryData])
 
   return null
 }
