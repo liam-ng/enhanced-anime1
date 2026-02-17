@@ -1,8 +1,15 @@
-import type { FC } from 'react'
+import { type FC, useCallback, useEffect, useRef, useState } from 'react'
 import _ from 'lodash'
+import { CircleMinus, CirclePlus } from 'lucide-react'
+import { createRoot } from 'react-dom/client'
 import { useAnime1EpisodeQuery } from '@/libs/query'
+import { storageHomeProgressBadgeCollapsed } from '@/libs/storage'
 import { openAnime1CategoryPage, setIfChanged } from '@/libs/utils'
 import { useEffectOnce } from '../hooks/common/useEffectOnce'
+
+const BADGE_TOGGLE_ATTR = 'data-enhanced-anime1-badge-toggle'
+const BADGE_CONTENT_ATTR = 'data-enhanced-anime1-badge-content'
+const ICON_SIZE = 18
 
 function useDocumentMutationObserver(callback: MutationCallback) {
   const [isEnabled, setIsEnabled] = useState(true)
@@ -87,71 +94,111 @@ export const Anime1HomeUIInject: FC = () => {
     if (!episodeTrElements.length || !data) {
       return
     }
-    console.log('Process', episodeTrElements)
-    episodeTrElements.forEach((tr) => {
-      const tdList = tr.querySelectorAll('td')
-      if (tdList.length < 2) {
-        return
-      }
-      const [titleTd, episodeTd, ..._rest] = tdList
-      if (titleTd.children.length > 1) {
-        // Already processed
-        return
-      }
-      const titleAnchor = titleTd.querySelector('a')
-      if (!titleAnchor) {
-        return
-      }
-      const categoryId = parseCategoryIdFromUrl(titleAnchor.href)
-      if (!categoryId) {
-        return
-      }
-      // 页面上只显示最新一集，当最新一集看过则置灰，再展示最后看的进度
-      const episodes = Object.values(data).filter(ep => ep.categoryId === categoryId)
-      const lastWatchEpisode = _.maxBy(episodes, x => x.updatedAt)
-      if (!lastWatchEpisode) {
-        return
-      }
-
-      const makeTableRowGray = () => {
-        // 这里是幂等的，暂时不用处理
-        tr.style.color = '#9ca3af'
-        titleAnchor.style.color = '#9ca3af'
-        tr.style.textDecoration = 'line-through'
-      }
-      // 如果当前集（最新一集或者最后一集）已经看完，则置灰
-      const cellEpisodeNumber = parseEpisodeFromTableCell(episodeTd)
-      if (cellEpisodeNumber !== null) {
-        const cellEpisode = episodes.find(ep => ep.episodeNumber === cellEpisodeNumber)
-        if (cellEpisode && cellEpisode.isFinished) {
-          makeTableRowGray()
+    let cancelled = false
+    void (async () => {
+      const collapsedIds = await storageHomeProgressBadgeCollapsed.getValue()
+      if (cancelled) return
+      episodeTrElements.forEach((tr) => {
+        const tdList = tr.querySelectorAll('td')
+        if (tdList.length < 2) {
           return
         }
-      }
-      if (episodeTd.textContent?.includes('劇場版')) {
-        const episode = episodes[0]
-        if (episode && episode.isFinished) {
-          makeTableRowGray()
+        const [titleTd, episodeTd, ..._rest] = tdList
+        if (titleTd.querySelector(`[${BADGE_TOGGLE_ATTR}]`)) {
           return
         }
-      }
+        const titleAnchor = titleTd.querySelector('a')
+        if (!titleAnchor) {
+          return
+        }
+        const categoryId = parseCategoryIdFromUrl(titleAnchor.href)
+        if (!categoryId) {
+          return
+        }
+        // 页面上只显示最新一集，当最新一集看过则置灰，再展示最后看的进度
+        const episodes = Object.values(data).filter(ep => ep.categoryId === categoryId)
+        const lastWatchEpisode = _.maxBy(episodes, x => x.updatedAt)
+        if (!lastWatchEpisode) {
+          return
+        }
 
-      titleAnchor.style.marginRight = '8px'
-      const progressBadge = document.createElement('span')
-      progressBadge.className = 'ext-badge ext-hover-shadow'
-      progressBadge.innerHTML = `
+        const makeTableRowGray = () => {
+          // 这里是幂等的，暂时不用处理
+          tr.style.color = '#9ca3af'
+          titleAnchor.style.color = '#9ca3af'
+          tr.style.textDecoration = 'line-through'
+        }
+        // 如果当前集（最新一集或者最后一集）已经看完，则置灰
+        const cellEpisodeNumber = parseEpisodeFromTableCell(episodeTd)
+        if (cellEpisodeNumber !== null) {
+          const cellEpisode = episodes.find(ep => ep.episodeNumber === cellEpisodeNumber)
+          if (cellEpisode && cellEpisode.isFinished) {
+            makeTableRowGray()
+            return
+          }
+        }
+        if (episodeTd.textContent?.includes('劇場版')) {
+          const episode = episodes[0]
+          if (episode && episode.isFinished) {
+            makeTableRowGray()
+            return
+          }
+        }
+
+        titleAnchor.style.marginRight = '8px'
+        // Override .tablepress tbody td { vertical-align: top } from anime1
+        titleTd.style.setProperty('vertical-align', 'middle', 'important')
+
+        const isCollapsed = collapsedIds.includes(categoryId)
+
+        // Collapse button
+        const toggleEl = document.createElement('span')
+        toggleEl.setAttribute(BADGE_TOGGLE_ATTR, '')
+        toggleEl.dataset.categoryId = categoryId
+        toggleEl.setAttribute('aria-label', isCollapsed ? 'Show progress' : 'Hide progress')
+        toggleEl.style.display = 'inline-flex'
+        toggleEl.style.cursor = 'pointer'
+        toggleEl.style.verticalAlign = 'middle'
+        const iconRoot = createRoot(toggleEl)
+        iconRoot.render(isCollapsed ? <CirclePlus size={ICON_SIZE} /> : <CircleMinus size={ICON_SIZE} />)
+        ;(toggleEl as HTMLElement & { __iconRoot: ReturnType<typeof createRoot> }).__iconRoot = iconRoot
+
+        const progressBadge = document.createElement('span')
+        progressBadge.setAttribute(BADGE_CONTENT_ATTR, '')
+        progressBadge.className = 'ext-badge ext-hover-shadow'
+        progressBadge.innerHTML = `
         <span style="font-size: 0.8rem;margin-right: 4px;">▶ </span>
         <span>上次观看至${lastWatchEpisode.displayEpisodeNumber !== '剧场版' ? ` ${lastWatchEpisode.displayEpisodeNumber} 话` : ''} ${lastWatchEpisode.displayCurrentTime}</span>
       `
-      const handleClick = () => {
-        openAnime1CategoryPage(categoryId)
-      }
-      // There is no need to removeEventListener because anime1 cache the object
-      // eslint-disable-next-line react-web-api/no-leaked-event-listener
-      progressBadge.addEventListener('click', handleClick)
+        if (isCollapsed) {
+          progressBadge.style.display = 'none'
+        }
+        const handleBadgeClick = () => {
+          openAnime1CategoryPage(categoryId)
+        }
+        // There is no need to removeEventListener because anime1 cache the object
+        // eslint-disable-next-line react-web-api/no-leaked-event-listener
+        progressBadge.addEventListener('click', handleBadgeClick)
 
-      titleTd.appendChild(progressBadge)
-    })
+        // Toggle collapse: persist in storage and update badge visibility + icon
+        toggleEl.addEventListener('click', async (e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          const list = await storageHomeProgressBadgeCollapsed.getValue()
+          const nowCollapsed = !list.includes(categoryId)
+          const nextList = nowCollapsed ? [...list, categoryId] : list.filter(id => id !== categoryId)
+          await storageHomeProgressBadgeCollapsed.setValue(nextList)
+          progressBadge.style.display = nowCollapsed ? 'none' : ''
+          const root = (toggleEl as HTMLElement & { __iconRoot: ReturnType<typeof createRoot> }).__iconRoot
+          root.render(nowCollapsed ? <CirclePlus size={ICON_SIZE} /> : <CircleMinus size={ICON_SIZE} />)
+          toggleEl.setAttribute('aria-label', nowCollapsed ? 'Show progress' : 'Hide progress')
+        })
+
+        titleTd.appendChild(toggleEl)
+        titleTd.appendChild(progressBadge)
+      })
+    })()
+    return () => { cancelled = true }
   }, [episodeTrElements, data])
 
   return null

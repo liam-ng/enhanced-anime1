@@ -27,3 +27,9 @@ export const storageWidgetPosition = storage.defineItem<{ x: number, y: number }
   version: 1,
   fallback: { x: 0, y: 0 },
 })
+
+/** Category IDs for which the home page progress badge is collapsed (hidden). */
+export const storageHomeProgressBadgeCollapsed = storage.defineItem<string[]>('local:HomeProgressBadgeCollapsed', {
+  version: 1,
+  fallback: [],
+})
