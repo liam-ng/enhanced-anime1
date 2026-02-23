@@ -1,9 +1,8 @@
-const BANGUMI_DATA_URL = import.meta.env.WXT_BGM_DATA_URL
-if (!BANGUMI_DATA_URL) {
-  throw new Error('Bangumi data URL is not configured')
+// Worker base URL for bangumi-data API (GET /bangumi-data?subject=...)
+const BGM_DATA_BASE_URL = import.meta.env.WXT_BGM_DATA_URL
+if (!BGM_DATA_BASE_URL) {
+  throw new Error('Bangumi data URL (WXT_BGM_DATA_URL) is not configured')
 }
-
-let cachedBangumiData: BangumiDataJson | null = null
 
 export interface BangumiDataSite {
   site: string
@@ -19,7 +18,9 @@ export interface BangumiDataItem {
 export interface BangumiDataJson {
   siteMeta?: {
     bangumi?: {
+      title?: string
       urlTemplate?: string
+      type?: string
     }
   }
   items: BangumiDataItem[]
@@ -36,71 +37,18 @@ export interface BgmSubject {
   bangumi_url?: string
 }
 
-export async function getBangumiData(): Promise<BangumiDataJson> {
-  if (cachedBangumiData) return cachedBangumiData
-  const res = await fetch(BANGUMI_DATA_URL)
-  if (!res.ok) {
-    throw new Error(`Failed to fetch bangumi-data: ${res.status} ${res.statusText}`)
-  }
-  const data = await res.json() as BangumiDataJson
-  cachedBangumiData = data
-  return data
-}
-
-/** Collect all possible title strings from an item for matching. */
-function getItemTitles(item: BangumiDataItem): string[] {
-  const titles: string[] = [item.title]
-  const tt = item.titleTranslate
-  if (tt) {
-    if (Array.isArray(tt['zh-Hans'])) titles.push(...tt['zh-Hans'])
-    if (Array.isArray(tt['zh-Hant'])) titles.push(...tt['zh-Hant'])
-    if (Array.isArray(tt.en)) titles.push(...tt.en)
-  }
-  return titles.map(t => t.trim()).filter(Boolean)
-}
-
-/**
- * Find bangumi subject id from bangumi-data items by matching the category title.
- * Matches against item.title and titleTranslate (zh-Hans, zh-Hant, en).
- * Exact match (t === normalizedSearch) is preferred; then fuzzy (includes) as fallback.
- * Among same tier, returns the last matching item so the latest season/entry is prioritized.
- */
-export function findBangumiSubjectId(items: BangumiDataItem[], seriesTitle: string): string | null {
-  const normalizedSearch = seriesTitle.trim()
-  if (!normalizedSearch) return null
-
-  let lastExactMatch: string | null = null
-  let lastFuzzyMatch: string | null = null
-  for (const item of items) {
-    const titles = getItemTitles(item)
-    const exactMatch = titles.some(t => t === normalizedSearch)
-    const fuzzyMatch = !exactMatch && titles.some(
-      t => t.includes(normalizedSearch) || normalizedSearch.includes(t),
-    )
-    if (!exactMatch && !fuzzyMatch) continue
-
-    const site = item.sites?.find(s => s.site === 'bangumi')
-    if (!site?.id) continue
-    if (exactMatch) lastExactMatch = site.id
-    else lastFuzzyMatch = site.id
-  }
-  return lastExactMatch ?? lastFuzzyMatch
-}
-
 const BGM_API_BASE = import.meta.env.WXT_BGM_API_BASE
 if (!BGM_API_BASE) {
   throw new Error('Bangumi API base URL is not configured')
 }
 
-export async function fetchBgmSubject(subjectId: string): Promise<BgmSubject> {
+export async function fetchBgmSubject(subjectId: string, urlTemplate?: string): Promise<BgmSubject> {
   const url = `${BGM_API_BASE}/v0/subjects/${subjectId}`
   const res = await fetch(url)
   if (!res.ok) {
     throw new Error(`BGM API error: ${res.status} ${res.statusText} for ${url}`)
   }
   const data = await res.json()
-  const bangumiData = await getBangumiData()
-  const urlTemplate = bangumiData.siteMeta?.bangumi?.urlTemplate
   const bangumi_url = urlTemplate ? urlTemplate.replace('{{id}}', String(data.id)) : undefined
   return {
     id: data.id,
@@ -114,7 +62,7 @@ export async function fetchBgmSubject(subjectId: string): Promise<BgmSubject> {
 }
 
 /**
- * Resolve series title to BGM subject: fetch bangumi-data, find item, get bangumi id, fetch subject.
+ * Resolve series title to BGM subject via worker GET /bangumi-data?subject=...
  * Returns subject or null if any step fails.
  */
 export async function resolveBgmSubjectBySeriesTitle(seriesTitle: string): Promise<{
@@ -127,23 +75,37 @@ export async function resolveBgmSubjectBySeriesTitle(seriesTitle: string): Promi
   }
 
   try {
-    debug.step = 'getBangumiData'
-    const data = await getBangumiData()
-    debug.itemsCount = data.items?.length ?? 0
+    const subjectParam = encodeURIComponent(seriesTitle.trim())
+    const dataUrl = `${BGM_DATA_BASE_URL.replace(/\/$/, '')}/bangumi-data?subject=${subjectParam}`
+    debug.step = 'fetchBangumiData'
+    const res = await fetch(dataUrl)
+    if (!res.ok) {
+      if (res.status === 404) {
+        console.error('[enhanced-anime1] Bangumi card: no matching subject in bangumi-data', debug)
+        return null
+      }
+      throw new Error(`bangumi-data request failed: ${res.status} ${res.statusText}`)
+    }
 
-    const subjectId = findBangumiSubjectId(data.items ?? [], seriesTitle)
-    debug.step = 'findBangumiSubjectId'
-    debug.subjectId = subjectId ?? null
-
-    if (!subjectId) {
+    const data = (await res.json()) as BangumiDataJson
+    const items = data.items ?? []
+    if (items.length === 0) {
       console.error('[enhanced-anime1] Bangumi card: no matching subject in bangumi-data', debug)
       return null
     }
 
+    const item = items[0]
+    const subjectId = item.sites?.find(s => s.site === 'bangumi')?.id
+    debug.subjectId = subjectId ?? null
+    if (!subjectId) {
+      console.error('[enhanced-anime1] Bangumi card: item has no bangumi site id', debug)
+      return null
+    }
+
     debug.step = 'fetchBgmSubject'
-    const subject = await fetchBgmSubject(subjectId)
+    const urlTemplate = data.siteMeta?.bangumi?.urlTemplate
+    const subject = await fetchBgmSubject(subjectId, urlTemplate)
     debug.step = 'done'
-    debug.subjectId = subjectId
     return { subject, debug }
   }
   catch (err) {
