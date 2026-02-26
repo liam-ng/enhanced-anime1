@@ -1,7 +1,7 @@
 // Worker base URL for bangumi-data API (GET /bangumi-data?subject=...)
-const BGM_DATA_BASE_URL = import.meta.env.WXT_BGM_DATA_URL
+const BGM_DATA_BASE_URL = import.meta.env.WXT_WORKER_URL
 if (!BGM_DATA_BASE_URL) {
-  throw new Error('Bangumi data URL (WXT_BGM_DATA_URL) is not configured')
+  throw new Error('Bangumi data URL (WXT_WORKER_URL) is not configured')
 }
 
 export interface BangumiDataSite {
