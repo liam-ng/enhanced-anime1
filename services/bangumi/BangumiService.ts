@@ -13,12 +13,13 @@ const fetchClient = createFetchClient<paths>({
 })
 fetchClient.use({
   onRequest: ({ request }) => {
-    // Thinking: how to get the token from the background script without sharing the react state?
-    if (!BangumiSession.session) {
-      return new Response('No session', { status: 401 })
+    // Thinking: how to get the token from the background script without  sharing the react state?
+
+    // If the session is valid, set the authorization header
+    if (BangumiSession.session) {
+      const { access_token } = BangumiSession.session
+      request.headers.set('Authorization', `Bearer ${access_token}`)
     }
-    const { access_token } = BangumiSession.session
-    request.headers.set('Authorization', `Bearer ${access_token}`)
     return request
   },
 })
@@ -122,15 +123,15 @@ export interface BgmSubject {
 
 
 export async function fetchBgmSubject(subjectId: string, urlTemplate?: string): Promise<BgmSubject> {
-  // using raw fetch without Bangumi login (fetchClient)
-  const url = `${BGM_API_BASE}/v0/subjects/${subjectId}`
-  const res = await fetch(url)
-  if (!res.ok) {
-    throw new Error(`[BangumiService] BGM API error: ${res.status} ${res.statusText} for ${url}`)
-  }
-  const data = await res.json()
+  const subjectIdNum = Number(subjectId)
+  const response = await fetchClient.GET('/v0/subjects/{subject_id}', {
+    params: { path: { subject_id: subjectIdNum } },
+  })
+  const data = response.data
   if (data == null || typeof data !== 'object') {
-    throw new Error(`[BangumiService] BGM API returned invalid subject data for ${url}`)
+    const res = response.response
+    const msg = response.error ?? (res ? `${res.status} ${res.statusText}` : 'No data')
+    throw new Error(`[BangumiService] BGM API error: ${msg} for /v0/subjects/${subjectId}`)
   }
   const bangumi_url = urlTemplate ? urlTemplate.replace('{{id}}', String(data.id)) : undefined
   return {
