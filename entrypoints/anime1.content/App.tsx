@@ -1,5 +1,5 @@
 import { getAnime1PageType } from '@/libs/anime1-site-parser'
-import { Anime1CategoryBangumiCard } from './components/Anime1CategoryBangumiCard'
+import { Anime1CategoryBangumiCard } from './components/anime1-category-bangumi-card'
 import { Anime1CategoryControls } from './components/anime1-category-controls'
 import { Anime1HomeUIInject } from './components/anime1-home-ui-inject'
 import { Anime1VideoProgressResumes } from './components/anime1-video-progress-resume'
