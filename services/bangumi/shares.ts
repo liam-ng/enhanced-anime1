@@ -85,7 +85,7 @@ export async function resolveBgmSubjectBySeriesTitle(seriesTitle: string): Promi
     const data = (await res.json()) as BangumiDataJson
     const items = data.items ?? []
     if (items.length === 0) {
-      console.error('[enhanced-anime1] Bangumi card: no matching subject in bangumi-data', debug)
+      console.error('[enhanced-anime1] Bangumi card: no matching subject in returned bangumi-data', debug)
       return null
     }
 
@@ -93,7 +93,7 @@ export async function resolveBgmSubjectBySeriesTitle(seriesTitle: string): Promi
     const subjectId = item.sites?.find(s => s.site === 'bangumi')?.id
     debug.subjectId = subjectId ?? null
     if (!subjectId) {
-      console.error('[enhanced-anime1] Bangumi card: item has no bangumi site id', debug)
+      console.error('[enhanced-anime1] Bangumi card: returned item has no bangumi site id', debug)
       return null
     }
 

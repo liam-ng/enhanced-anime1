@@ -6,8 +6,10 @@ import { defineProxyService } from '@webext-core/proxy-service'
 import createFetchClient from 'openapi-fetch'
 import { BangumiSession } from './BangumiSession'
 
+const BGM_API_BASE = 'https://api.bgm.tv'
+
 const fetchClient = createFetchClient<paths>({
-  baseUrl: 'https://api.bgm.tv',
+  baseUrl: BGM_API_BASE,
 })
 fetchClient.use({
   onRequest: ({ request }) => {
@@ -120,11 +122,16 @@ export interface BgmSubject {
 
 
 export async function fetchBgmSubject(subjectId: string, urlTemplate?: string): Promise<BgmSubject> {
-  const subjectIdNum = Number(subjectId)
-  const response = await fetchClient.GET('/v0/subjects/{subject_id}', {
-    params: { path: { subject_id: subjectIdNum } },
-  })
-  const data = response.data as BgmSubject
+  // using raw fetch without Bangumi login (fetchClient)
+  const url = `${BGM_API_BASE}/v0/subjects/${subjectId}`
+  const res = await fetch(url)
+  if (!res.ok) {
+    throw new Error(`[BangumiService] BGM API error: ${res.status} ${res.statusText} for ${url}`)
+  }
+  const data = await res.json()
+  if (data == null || typeof data !== 'object') {
+    throw new Error(`[BangumiService] BGM API returned invalid subject data for ${url}`)
+  }
   const bangumi_url = urlTemplate ? urlTemplate.replace('{{id}}', String(data.id)) : undefined
   return {
     id: data.id,
