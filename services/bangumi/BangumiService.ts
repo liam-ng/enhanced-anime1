@@ -82,3 +82,57 @@ class BangumiService {
 
 export const [registerBangumiService, getBangumiService]
   = defineProxyService('BangumiService', () => new BangumiService(), { logger: console })
+
+// Bangumi Info Card
+
+export interface BangumiDataSite {
+  site: string
+  id: string
+}
+
+export interface BangumiDataItem {
+  title: string
+  titleTranslate?: Record<string, string[]>
+  sites: BangumiDataSite[]
+}
+
+export interface BangumiDataJson {
+  siteMeta?: {
+    bangumi?: {
+      title?: string
+      urlTemplate?: string
+      type?: string
+    }
+  }
+  items: BangumiDataItem[]
+}
+
+export interface BgmSubject {
+  id: number
+  name: string
+  name_cn: string
+  summary: string
+  images: { common: string }
+  tags: Array<{ name: string; count?: number }>
+  /** Subject page URL from siteMeta.bangumi.urlTemplate with '{{id}}' replaced by actual subject id. */
+  bangumi_url?: string
+}
+
+
+export async function fetchBgmSubject(subjectId: string, urlTemplate?: string): Promise<BgmSubject> {
+  const subjectIdNum = Number(subjectId)
+  const response = await fetchClient.GET('/v0/subjects/{subject_id}', {
+    params: { path: { subject_id: subjectIdNum } },
+  })
+  const data = response.data as BgmSubject
+  const bangumi_url = urlTemplate ? urlTemplate.replace('{{id}}', String(data.id)) : undefined
+  return {
+    id: data.id,
+    name: data.name ?? '',
+    name_cn: data.name_cn ?? '',
+    summary: data.summary ?? '',
+    images: data.images ?? { common: '' },
+    tags: Array.isArray(data.tags) ? data.tags : [],
+    bangumi_url,
+  }
+}

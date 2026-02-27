@@ -1,6 +1,6 @@
 import React, { type FC } from 'react'
-import type { BgmSubject } from '@/libs/bangumi-resolve'
-import { resolveBgmSubjectBySeriesTitle } from '@/libs/bangumi-resolve'
+import type { BgmSubject } from '@/services/bangumi/BangumiService'
+import { resolveBgmSubjectBySeriesTitle } from '@/services/bangumi/shares'
 import { useAnime1CategoryQuery } from '@/libs/query'
 import { useAnime1State } from '../providers/anime1-state-provider'
 import { useEffect, useRef } from 'react'
