@@ -71,7 +71,7 @@ export async function resolveBgmSubjectBySeriesTitle(seriesTitle: string): Promi
 
   try {
     const subjectParam = encodeURIComponent(seriesTitle.trim())
-    const dataUrl = `${WXT_WORKER_URL.replace(/\/$/, '')}/bangumi-data?subject=${subjectParam}`
+    const dataUrl = `${WXT_WORKER_URL}/bangumi-data?subject=${subjectParam}`
     debug.step = 'fetchBangumiData'
     const res = await fetch(dataUrl)
     if (!res.ok) {
