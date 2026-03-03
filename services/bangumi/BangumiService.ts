@@ -8,6 +8,11 @@ import { BangumiSession } from './BangumiSession'
 
 const BGM_API_BASE = 'https://api.bgm.tv'
 
+const WXT_WORKER_URL = import.meta.env.WXT_WORKER_URL
+if (!WXT_WORKER_URL) {
+  throw new Error('BangumiService: WXT_WORKER_URL is not configured')
+}
+
 const fetchClient = createFetchClient<paths>({
   baseUrl: BGM_API_BASE,
 })
@@ -81,12 +86,89 @@ class BangumiService {
   isLoggedIn() {
     return BangumiSession.valid
   }
+
+  // Bangumi Info Card
+  // Fetching from bangumi-data worker to get subject id using matching anime title and then fetch anime details from BGM API using the subject id 
+
+  async fetchBgmSubject(subjectId: string, urlTemplate?: string): Promise<BgmSubject> {
+    const subjectIdNum = Number(subjectId)
+    const response = await fetchClient.GET('/v0/subjects/{subject_id}', {
+      params: { path: { subject_id: subjectIdNum } },
+    })
+    const data = response.data
+    if (data == null || typeof data !== 'object') {
+      const res = response.response
+      const msg = response.error ?? (res ? `${res.status} ${res.statusText}` : 'No data')
+      throw new Error(`[BangumiService] BGM API error: ${msg} for /v0/subjects/${subjectId}`)
+    }
+    const bangumi_url = urlTemplate ? urlTemplate.replace('{{id}}', String(data.id)) : undefined
+    return {
+      id: data.id,
+      name: data.name ?? '',
+      name_cn: data.name_cn ?? '',
+      summary: data.summary ?? '',
+      images: data.images ?? { common: '' },
+      tags: Array.isArray(data.tags) ? data.tags : [],
+      bangumi_url,
+    }
+  }
+
+  async resolveBgmSubjectBySeriesTitle(seriesTitle: string): Promise<{
+    subject: BgmSubject
+    debug: Record<string, unknown>
+  } | null> {
+    const debug: Record<string, unknown> = {
+      step: 'start',
+      seriesTitle,
+    }
+
+    try {
+      const subjectParam = encodeURIComponent(seriesTitle.trim())
+      const dataUrl = `${WXT_WORKER_URL}/bangumi-data?subject=${subjectParam}`
+      debug.step = 'fetchBangumiData'
+      const res = await fetch(dataUrl)
+      if (!res.ok) {
+        if (res.status === 404) {
+          console.error('[enhanced-anime1] Bangumi card: no matching subject in bangumi-data', debug)
+          return null
+        }
+        throw new Error(`bangumi-data request failed: ${res.status} ${res.statusText}`)
+      }
+
+      const data = (await res.json()) as BangumiDataJson
+      const items = data.items ?? []
+      if (items.length === 0) {
+        console.error('[enhanced-anime1] Bangumi card: no matching subject in returned bangumi-data', debug)
+        return null
+      }
+
+      const item = items[0]
+      const subjectId = item.sites?.find(s => s.site === 'bangumi')?.id
+      debug.subjectId = subjectId ?? null
+      if (!subjectId) {
+        console.error('[enhanced-anime1] Bangumi card: returned item has no bangumi site id', debug)
+        return null
+      }
+
+      debug.step = 'fetchBgmSubject'
+      const urlTemplate = data.siteMeta?.bangumi?.urlTemplate
+      const subject = await this.fetchBgmSubject(subjectId, urlTemplate)
+      debug.step = 'done'
+      return { subject, debug }
+    }
+    catch (err) {
+      debug.step = 'error'
+      debug.error = err instanceof Error ? err.message : String(err)
+      console.error('[enhanced-anime1] Bangumi card: resolve failed', debug, err)
+      return null
+    }
+  }
 }
 
 export const [registerBangumiService, getBangumiService]
   = defineProxyService('BangumiService', () => new BangumiService(), { logger: console })
 
-// Bangumi Info Card
+// Bangumi Info Card Interfaces
 
 export interface BangumiDataSite {
   site: string
@@ -119,28 +201,4 @@ export interface BgmSubject {
   tags: Array<{ name: string; count?: number }>
   /** Subject page URL from siteMeta.bangumi.urlTemplate with '{{id}}' replaced by actual subject id. */
   bangumi_url?: string
-}
-
-
-export async function fetchBgmSubject(subjectId: string, urlTemplate?: string): Promise<BgmSubject> {
-  const subjectIdNum = Number(subjectId)
-  const response = await fetchClient.GET('/v0/subjects/{subject_id}', {
-    params: { path: { subject_id: subjectIdNum } },
-  })
-  const data = response.data
-  if (data == null || typeof data !== 'object') {
-    const res = response.response
-    const msg = response.error ?? (res ? `${res.status} ${res.statusText}` : 'No data')
-    throw new Error(`[BangumiService] BGM API error: ${msg} for /v0/subjects/${subjectId}`)
-  }
-  const bangumi_url = urlTemplate ? urlTemplate.replace('{{id}}', String(data.id)) : undefined
-  return {
-    id: data.id,
-    name: data.name ?? '',
-    name_cn: data.name_cn ?? '',
-    summary: data.summary ?? '',
-    images: data.images ?? { common: '' },
-    tags: Array.isArray(data.tags) ? data.tags : [],
-    bangumi_url,
-  }
 }

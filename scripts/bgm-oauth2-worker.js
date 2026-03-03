@@ -9,7 +9,6 @@ const BANGUMI_DATA_TTL_MS = 24 * 60 * 60 * 1000 // 1 day
 // Response headers for GET /bangumi-data.
 const BANGUMI_DATA_RESPONSE_HEADERS = {
   'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': 'https://anime1.me',
 }
 
 // In-memory storage for bangumi-data

@@ -1,6 +1,3 @@
-import type { BangumiDataJson, BgmSubject } from './BangumiService'
-import { fetchBgmSubject } from './BangumiService'
-
 // During the response serialization, the status code is not included, so we need to handle it manually
 export const ErrorNo = {
   NoSession: 1,
@@ -52,61 +49,4 @@ export async function exchangeCode(code: string): Promise<BangumiOAuthResponse> 
   }
   const data = await response.json()
   return data as BangumiOAuthResponse
-}
-
-
-/**
- * Resolve series title to BGM subject via worker GET /bangumi-data?subject=...
- * Returns subject or null if any step fails.
- */
-
-export async function resolveBgmSubjectBySeriesTitle(seriesTitle: string): Promise<{
-  subject: BgmSubject
-  debug: Record<string, unknown>
-} | null> {
-  const debug: Record<string, unknown> = {
-    step: 'start',
-    seriesTitle,
-  }
-
-  try {
-    const subjectParam = encodeURIComponent(seriesTitle.trim())
-    const dataUrl = `${WXT_WORKER_URL}/bangumi-data?subject=${subjectParam}`
-    debug.step = 'fetchBangumiData'
-    const res = await fetch(dataUrl)
-    if (!res.ok) {
-      if (res.status === 404) {
-        console.error('[enhanced-anime1] Bangumi card: no matching subject in bangumi-data', debug)
-        return null
-      }
-      throw new Error(`bangumi-data request failed: ${res.status} ${res.statusText}`)
-    }
-
-    const data = (await res.json()) as BangumiDataJson
-    const items = data.items ?? []
-    if (items.length === 0) {
-      console.error('[enhanced-anime1] Bangumi card: no matching subject in returned bangumi-data', debug)
-      return null
-    }
-
-    const item = items[0]
-    const subjectId = item.sites?.find(s => s.site === 'bangumi')?.id
-    debug.subjectId = subjectId ?? null
-    if (!subjectId) {
-      console.error('[enhanced-anime1] Bangumi card: returned item has no bangumi site id', debug)
-      return null
-    }
-
-    debug.step = 'fetchBgmSubject'
-    const urlTemplate = data.siteMeta?.bangumi?.urlTemplate
-    const subject = await fetchBgmSubject(subjectId, urlTemplate)
-    debug.step = 'done'
-    return { subject, debug }
-  }
-  catch (err) {
-    debug.step = 'error'
-    debug.error = err instanceof Error ? err.message : String(err)
-    console.error('[enhanced-anime1] Bangumi card: resolve failed', debug, err)
-    return null
-  }
 }

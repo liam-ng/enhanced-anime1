@@ -1,6 +1,6 @@
 import React, { type FC } from 'react'
 import type { BgmSubject } from '@/services/bangumi/BangumiService'
-import { resolveBgmSubjectBySeriesTitle } from '@/services/bangumi/shares'
+import { bangumiService } from '../services'
 import { useAnime1CategoryQuery } from '@/libs/query'
 import { useAnime1State } from '../providers/anime1-state-provider'
 import { useEffect, useRef } from 'react'
@@ -141,7 +141,7 @@ export const Anime1CategoryBangumiCard: FC = () => {
 
     let cancelled = false
 
-    void resolveBgmSubjectBySeriesTitle(seriesTitle).then((result) => {
+    void bangumiService.resolveBgmSubjectBySeriesTitle(seriesTitle).then((result) => {
       if (cancelled) return
       if (!result) return
 
