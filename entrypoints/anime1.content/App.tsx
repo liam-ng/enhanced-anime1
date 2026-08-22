@@ -20,11 +20,12 @@ export default function App({ el }: { el: HTMLDivElement }) {
 
   const [shadowElements, _] = useState<{
     shadowRoot: ShadowRoot
-    htmlElement: HTMLHtmlElement
+    rootElement: HTMLElement
   }>(() => {
     const shadowRoot = el.getRootNode() as ShadowRoot
-    const htmlElement = shadowRoot.firstChild as HTMLHtmlElement
-    return { shadowRoot, htmlElement }
+    // The shadow root holds a <style> followed by the isolated container, so theme classes go on
+    // our own wrapper — it is the only node guaranteed to be an ancestor of everything we render.
+    return { shadowRoot, rootElement: el }
   })
   console.log('App root', shadowElements)
 

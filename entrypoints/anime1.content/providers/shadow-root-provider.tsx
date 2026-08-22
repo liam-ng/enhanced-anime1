@@ -3,12 +3,12 @@ import { createContext, use } from 'react'
 
 const Context = createContext<{
   shadowRoot: ShadowRoot
-  htmlElement: HTMLHtmlElement
+  rootElement: HTMLElement
 } | null>(null)
 
 export const ShadowRootProvider: FC<PropsWithChildren<{ state: {
   shadowRoot: ShadowRoot
-  htmlElement: HTMLHtmlElement
+  rootElement: HTMLElement
 } }>> = ({ children, state }) => {
   return (
     <Context value={state}>

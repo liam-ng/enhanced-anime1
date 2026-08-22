@@ -1,10 +1,9 @@
 import type { FC } from 'react'
 import type { IAnime1Post } from '@/libs/anime1-site-parser'
 import type { StorageAnime1Episode } from '@/libs/storage'
-import { throttle } from 'lodash'
 import { memo } from 'react'
 import { useAnime1EpisodeBatchUpdate } from '@/libs/query'
-import { useAfterRerender } from '../hooks/common/useAfterRerender'
+import { throttle } from '@/libs/utils'
 import { useUpdateEffect } from '../hooks/common/useUpdateEffect'
 import { useVideoProgress } from '../hooks/useVideoProgress'
 import { useAnime1State } from '../providers/anime1-state-provider'
@@ -29,14 +28,11 @@ export const Anime1VideoWorkers: FC = memo(() => {
   const { mutate } = useAnime1EpisodeBatchUpdate()
   const [videosProgress, setVideosProgress] = useState<Record<string, { currentTime: number, duration: number }>>({})
 
-  useAfterRerender(() => {
-    console.log('trigger after re-render for workers', videosProgress)
-  })
   const trottledSyncAnime1Episodes = useMemo(() => {
     return throttle((episodes: StorageAnime1Episode[]) => {
       console.log('[Storage] Sync anime1Episodes', new Date().toLocaleString())
       mutate(episodes)
-    }, 1000, { leading: false, trailing: true })
+    }, 1000)
   }, [mutate])
 
   useEffect(() => {

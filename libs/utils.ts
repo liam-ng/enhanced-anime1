@@ -53,3 +53,44 @@ export function openAnime1CategoryPage(categoryId: string) {
   // Open in a new tab
   window.open(url, '_self')
 }
+
+export function maxBy<T>(items: T[], iteratee: (item: T) => number): T | undefined {
+  let best: T | undefined
+  let bestValue = -Infinity
+  for (const item of items) {
+    const value = iteratee(item)
+    if (value > bestValue) {
+      best = item
+      bestValue = value
+    }
+  }
+  return best
+}
+
+export function keyBy<T, K extends keyof T>(items: T[], key: K): Record<string, T> {
+  const result: Record<string, T> = {}
+  for (const item of items) {
+    result[String(item[key])] = item
+  }
+  return result
+}
+
+/** Trailing-edge throttle: fires once per `wait` window with the latest arguments. */
+export function throttle<A extends unknown[]>(fn: (...args: A) => void, wait: number) {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let pendingArgs: A | undefined
+  return (...args: A) => {
+    pendingArgs = args
+    if (timer) {
+      return
+    }
+    timer = setTimeout(() => {
+      timer = undefined
+      const nextArgs = pendingArgs
+      pendingArgs = undefined
+      if (nextArgs) {
+        fn(...nextArgs)
+      }
+    }, wait)
+  }
+}

@@ -24,26 +24,24 @@ export default defineConfig({
 
   manifestVersion: 3,
   manifest: {
-    name: 'Enhanced Anime1',
+    name: 'anime1.me Watch History Tracker',
     description:
       'Browser extension that adds useful features for anime1.me site.',
     homepage_url: 'https://github.com/iyume/enhanced-anime1',
     permissions: ['storage', 'identity'],
     host_permissions: [
-      'https://bangumi-token-exchanger.iyumelive.workers.dev/*',
+      'https://divine-sea-1527.liamng.workers.dev/*',
       'https://api.bgm.tv/*',
     ],
     web_accessible_resources: [
       {
         resources: ['inject.js', 'assets/anime1-main.css', 'icons/*.png'],
-        matches: [
-          '*://anime1.me/*',
-        ],
+        matches: ['*://anime1.me/*'],
       },
     ],
     browser_specific_settings: {
       gecko: {
-        id: 'iyumelive@gmail.com', // UUID or email for Firefox
+        id: '@extension-enhanced-anime1-liam-test', // UUID or email for Firefox
       },
     },
   },

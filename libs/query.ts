@@ -1,6 +1,6 @@
 import type { StorageAnime1Episode } from './storage'
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import _ from 'lodash'
+import { keyBy } from './utils'
 import { storageAnime1Episodes } from './storage'
 
 const DO_NOT_RETRY_CODES = new Set([400, 401, 403, 404, 422])
@@ -76,7 +76,7 @@ export function useAnime1EpisodeQuery() {
         } satisfies IAnime1RichEpisode
       })
 
-      return _.keyBy(richAnime1Episodes, 'id')
+      return keyBy(richAnime1Episodes, 'id')
     },
   })
 }
@@ -94,7 +94,7 @@ export function useAnime1EpisodeBatchUpdate() {
   return useMutation({
     mutationFn: async (batch: StorageAnime1Episode[]) => {
       const anime1Episodes = await storageAnime1Episodes.getValue()
-      const anime1EpisodesMap = _.keyBy(anime1Episodes, 'id')
+      const anime1EpisodesMap = keyBy(anime1Episodes, 'id')
       batch.forEach((episode) => {
         anime1EpisodesMap[episode.id] = episode
       })
@@ -145,7 +145,7 @@ export function useAnime1CategoryQuery() {
   return useQuery({
     queryKey: ['anime1Category'],
     queryFn: async () => {
-      const response = await fetch('https://d1zquzjgwo9yb.cloudfront.net')
+      const response = await fetch('https://anime1.me/animelist.json')
       if (!response.ok) {
         throw new Error(`Failed to fetch anime1 data: ${response.statusText}`)
       }

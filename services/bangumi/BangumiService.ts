@@ -2,7 +2,7 @@ import type { FetchResponse } from 'openapi-fetch'
 import type { components, paths } from '../../libs/gen/bangumi-v0'
 
 import type { EpisodeCollectionType } from './shares'
-import { defineProxyService } from '@webext-core/proxy-service'
+import { createProxyService, registerService } from '@webext-core/proxy-service'
 import createFetchClient from 'openapi-fetch'
 import { BangumiSession } from './BangumiSession'
 
@@ -165,8 +165,15 @@ class BangumiService {
   }
 }
 
-export const [registerBangumiService, getBangumiService]
-  = defineProxyService('BangumiService', () => new BangumiService(), { logger: console })
+const BANGUMI_SERVICE_KEY = 'BangumiService'
+
+export function registerBangumiService() {
+  return registerService(BANGUMI_SERVICE_KEY, new BangumiService(), { logger: console })
+}
+
+export function getBangumiService() {
+  return createProxyService<BangumiService>(BANGUMI_SERVICE_KEY, { logger: console })
+}
 
 // Bangumi Info Card Interfaces
 

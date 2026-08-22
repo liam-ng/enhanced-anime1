@@ -1,7 +1,6 @@
 import type { FC } from 'react'
-import _ from 'lodash'
 import { useAnime1EpisodeQuery } from '@/libs/query'
-import { openAnime1CategoryPage, setIfChanged } from '@/libs/utils'
+import { maxBy, openAnime1CategoryPage, setIfChanged } from '@/libs/utils'
 import { useEffectOnce } from '../hooks/common/useEffectOnce'
 
 function useDocumentMutationObserver(callback: MutationCallback) {
@@ -108,7 +107,7 @@ export const Anime1HomeUIInject: FC = () => {
       }
       // 页面上只显示最新一集，当最新一集看过则置灰，再展示最后看的进度
       const episodes = Object.values(data).filter(ep => ep.categoryId === categoryId)
-      const lastWatchEpisode = _.maxBy(episodes, x => x.updatedAt)
+      const lastWatchEpisode = maxBy(episodes, x => x.updatedAt)
       if (!lastWatchEpisode) {
         return
       }
