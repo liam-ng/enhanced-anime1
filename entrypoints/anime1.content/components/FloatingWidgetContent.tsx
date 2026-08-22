@@ -1,8 +1,10 @@
 import type { FC } from 'react'
 import type { IAnime1RichEpisode } from '@/libs/query'
 import clsx from 'clsx'
-import { useAnime1CategoryQuery, useAnime1EpisodeQuery } from '@/libs/query'
+import { useAnime1CategoryQuery, useAnime1EpisodeDeleteByCategoryId, useAnime1EpisodeQuery } from '@/libs/query'
 import { cn, openAnime1CategoryPage } from '@/libs/utils'
+import { Trash2 } from 'lucide-react'
+import { useMemo } from 'react'
 import Badge from './ui/badge'
 import Tabs from './ui/tabs/Tabs'
 import TabsContent from './ui/tabs/TabsContent'
@@ -66,6 +68,7 @@ const CategoryCard: FC<{ category: ICategory }> = ({ category }) => {
   const daysAgo = Math.floor((Date.now() - category.updatedAt) / (1000 * 60 * 60 * 24))
   const timeAgo = daysAgo === 0 ? '今天' : daysAgo === 1 ? '昨天' : `${daysAgo} 天前`
   const { data } = useAnime1CategoryQuery()
+  const deleteByCategoryId = useAnime1EpisodeDeleteByCategoryId()
 
   const categoryDataSource = data?.[category.id]
 
@@ -77,6 +80,12 @@ const CategoryCard: FC<{ category: ICategory }> = ({ category }) => {
     })
   }, [category.episodes])
 
+  // 删除记录按钮点击事件
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    deleteByCategoryId.mutate(category.id)
+  }
+
   return (
     <div
       className="p-3 rounded-md border bg-(--background) mb-4 cursor-pointer transition-colors hover:bg-(--muted)/20"
@@ -84,8 +93,22 @@ const CategoryCard: FC<{ category: ICategory }> = ({ category }) => {
         () => openAnime1CategoryPage(category.id)
       }
     >
+      {/* 番剧标题 */}
       <div className="mb-2">
-        <h3 className="font-medium text-base text-(--text) line-clamp-1">{data?.[category.id]?.title ?? '...'}</h3>
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <h3 className="font-medium text-base text-(--text) line-clamp-1 flex-1 min-w-0">{data?.[category.id]?.title ?? '...'}</h3>
+          {/* 删除记录按钮 */}
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="shrink-0 p-1 rounded text-(--muted-text) hover:bg-(--destructive)/20 hover:text-(--destructive) transition-colors"
+            title="删除记录"
+            aria-label="删除记录"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+
         <div className="flex flex-wrap mt-1 mb-1 gap-1">
           {data
             ? categoryDataSource
