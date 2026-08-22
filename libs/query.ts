@@ -107,6 +107,20 @@ export function useAnime1EpisodeBatchUpdate() {
   })
 }
 
+export function useAnime1EpisodeDeleteByCategoryId() {
+  return useMutation({
+    mutationFn: async (categoryId: string) => {
+      const anime1Episodes = await storageAnime1Episodes.getValue()
+      const filtered = anime1Episodes.filter(ep => ep.categoryId !== categoryId)
+      await storageAnime1Episodes.setValue(filtered)
+      return filtered
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: ['anime1Episodes'] })
+    },
+  })
+}
+
 type Anime1DataRaw = [
   number, // Identifier
   string, // Title or <a href="...">Title</a>
