@@ -43,10 +43,15 @@ const cardStyles = {
     color: 'var(--text, #1a1a1a)',
   },
   nameCn: {
-    margin: '0 0 12px 0',
+    margin: '0 0 8px 0',
     fontSize: '14px',
     color: 'var(--text, #666)',
     opacity: 0.85,
+  },
+  meta: {
+    margin: '0 0 12px 0',
+    fontSize: '13px',
+    color: 'var(--text, #666)',
   },
   summary: {
     margin: '0 0 12px 0',
@@ -79,9 +84,22 @@ const cardStyles = {
   },
 } as const
 
+function formatSubjectMeta(subject: BgmSubject): string | null {
+  const parts: string[] = []
+  if (subject.rating_score > 0) {
+    parts.push(`评分 ${subject.rating_score}/10 ⭐`)
+  }
+  const latest = subject.latestAiredEpisode
+  if (latest && subject.eps > 0) {
+    parts.push(`${latest.ep}/${subject.eps} [${latest.sort}]`)
+  }
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
 const BangumiCardContent: FC<{ subject: BgmSubject }> = ({ subject }) => {
   const topTags = subject.tags.slice(0, 15) // only show 15 tags
   const summary = (subject.summary || '').replace(/\r\n/g, '\n').trim()
+  const meta = formatSubjectMeta(subject)
 
   return (
     <div style={cardStyles.card}>
@@ -102,6 +120,7 @@ const BangumiCardContent: FC<{ subject: BgmSubject }> = ({ subject }) => {
         <h2 style={cardStyles.name}>{subject.name}</h2>
         {subject.name_cn ? <p style={cardStyles.nameCn}>{subject.name_cn}</p> : null}
         <hr style={{ margin: '8px 0', border: 'none', borderTop: '1px solid var(--border, #e4e4e7)' }} />
+        {meta ? <p style={cardStyles.meta}>{meta}</p> : null}
         {summary ? <p style={cardStyles.summary}>{summary}</p> : null}
         <div style={cardStyles.tagsWrap}>
           {topTags.map(tag => (

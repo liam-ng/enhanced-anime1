@@ -90,6 +90,44 @@ class BangumiService {
   // Bangumi Info Card
   // Fetching from bangumi-data worker to get subject id using matching anime title and then fetch anime details from BGM API using the subject id 
 
+  async fetchLatestAiredEpisode(subjectId: number): Promise<BgmAiredEpisode | null> {
+    const episodes: Array<{ ep?: number; sort?: number; desc?: string }> = []
+    let offset = 0
+    const limit = 200
+
+    while (true) {
+      const response = await fetchClient.GET('/v0/episodes', {
+        params: {
+          query: {
+            subject_id: subjectId,
+            type: 0,
+            limit,
+            offset,
+          },
+        },
+      })
+      const page = response.data
+      if (page == null || typeof page !== 'object') {
+        const res = response.response
+        const msg = response.error ?? (res ? `${res.status} ${res.statusText}` : 'No data')
+        throw new Error(`[BangumiService] BGM API error: ${msg} for /v0/episodes?subject_id=${subjectId}`)
+      }
+
+      episodes.push(...(Array.isArray(page.data) ? page.data : []))
+      const total = page.total ?? episodes.length
+      offset += limit
+      if (offset >= total || !page.data?.length) break
+    }
+
+    const aired = episodes
+      .filter(ep => (ep.desc ?? '').trim() !== '')
+      .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+
+    const latest = aired.at(-1)
+    if (latest?.ep == null || latest.sort == null) return null
+    return { ep: latest.ep, sort: latest.sort }
+  }
+
   async fetchBgmSubject(subjectId: string, urlTemplate?: string): Promise<BgmSubject> {
     const subjectIdNum = Number(subjectId)
     const response = await fetchClient.GET('/v0/subjects/{subject_id}', {
@@ -102,6 +140,7 @@ class BangumiService {
       throw new Error(`[BangumiService] BGM API error: ${msg} for /v0/subjects/${subjectId}`)
     }
     const bangumi_url = urlTemplate ? urlTemplate.replace('{{id}}', String(data.id)) : undefined
+    const latestAiredEpisode = await this.fetchLatestAiredEpisode(subjectIdNum)
     return {
       id: data.id,
       name: data.name ?? '',
@@ -110,6 +149,9 @@ class BangumiService {
       images: data.images ?? { common: '' },
       tags: Array.isArray(data.tags) ? data.tags : [],
       bangumi_url,
+      rating_score: data.rating?.score ?? 0,
+      eps: data.eps ?? 0,
+      latestAiredEpisode,
     }
   }
 
@@ -199,6 +241,13 @@ export interface BangumiDataJson {
   items: BangumiDataItem[]
 }
 
+export interface BgmAiredEpisode {
+  /** Season-local episode number. */
+  ep: number
+  /** Global episode order across seasons (e.g. S2 ep 11 → sort 23). */
+  sort: number
+}
+
 export interface BgmSubject {
   id: number
   name: string
@@ -208,4 +257,10 @@ export interface BgmSubject {
   tags: Array<{ name: string; count?: number }>
   /** Subject page URL from siteMeta.bangumi.urlTemplate with '{{id}}' replaced by actual subject id. */
   bangumi_url?: string
+  /** Bangumi community score out of 10 (`rating.score`). */
+  rating_score: number
+  /** Planned episode count parsed from wiki infobox (`eps`). */
+  eps: number
+  /** Latest main-story episode with a non-empty synopsis from `/v0/episodes`. */
+  latestAiredEpisode: BgmAiredEpisode | null
 }
